@@ -1,13 +1,14 @@
-# Tugas 2 Pemrograman Jaringan C 5025221138
+# Tugas 2: Time Server TCP dengan Multithreading
 
-## Time Server TCP dengan Multithreading
+Repositori ini berisi implementasi dari sebuah *time server* sederhana menggunakan Python, yang dibuat sebagai bagian dari tugas mata kuliah **Praktikum Pemrograman Jaringan (Kelas C)**.
 
+**Disusun oleh:**
+- **Nama:** Farrel Akmalazmi Nugraha
+- **NRP:** 5025221138
 
-### Farrel Akmalazmi Nugraha
-### 5025221138
 ---
 
-## Deskripsi Tugas
+## Deskripsi Proyek
 
 Program ini adalah sebuah server TCP yang berjalan di **port 45000**. Tujuan utamanya adalah untuk melayani permintaan waktu dari klien secara bersamaan (*concurrently*) menggunakan arsitektur *multithreading*. Setiap klien yang terhubung akan ditangani oleh sebuah *thread* terpisah, memastikan bahwa server tetap responsif dan tidak terblokir oleh satu koneksi pun.
 
@@ -29,13 +30,15 @@ Pendekatan ini memastikan skalabilitas dan responsivitas server yang tinggi.
 
 ---
 
-## Demonstrasi Eksekusi
+## Pengujian dan Demonstrasi
 
-Berikut adalah bukti eksekusi program yang menunjukkan interaksi antara server di `mesin-1` dan klien (`telnet`) di `mesin-2`.
+Berikut adalah bukti eksekusi program yang menunjukkan fungsionalitas server, baik untuk klien tunggal maupun klien simultan.
 
-#### 1. Sesi Interaksi Klien (`mesin-2`)
-Klien berhasil terhubung ke server dan melakukan beberapa permintaan `TIME` sebelum akhirnya keluar dengan perintah `QUIT`.
+### 1. Pengujian Klien Tunggal (Dasar)
 
+Pengujian awal dilakukan dengan satu klien untuk memverifikasi fungsionalitas dasar.
+
+**Sesi Interaksi Klien (`mesin-2`):**
 ```bash
 (base) jovyan@272794a38dc5:~/work$ telnet 172.16.16.101 45000
 Trying 172.16.16.101...
@@ -43,31 +46,76 @@ Connected to 172.16.16.101.
 Escape character is '^]'.
 TIME
 JAM 06:14:20
-TIME
-JAM 06:14:37
-TIME
-JAM 06:14:50
 QUIT
 Connection closed by foreign host.
-(base) jovyan@272794a38dc5:~/work$
 ```
 
-#### 2. Log Aktivitas di Server (`mesin-1`)
-Log server mencatat setiap aktivitas secara detail, mulai dari koneksi baru hingga setiap pesan yang diterima dan waktu respons yang dikirim.
-
+**Log Aktivitas di Server (`mesin-1`):**
 ```log
 2025-06-09 06:14:12,654 - [SERVER] - Server aktif dan mendengarkan di port 45000...
 2025-06-09 06:14:16,771 - [SERVER] - Menerima koneksi baru dari ('172.16.16.102', 40036)
 2025-06-09 06:14:16,771 - [SERVER] - Thread baru untuk klien ('172.16.16.102', 40036) dimulai.
 2025-06-09 06:14:20,355 - [SERVER] - Menerima pesan dari ('172.16.16.102', 40036): 'TIME'
 2025-06-09 06:14:20,356 - [SERVER] - Mengirim waktu '06:14:20' ke ('172.16.16.102', 40036)
-2025-06-09 06:14:37,430 - [SERVER] - Menerima pesan dari ('172.16.16.102', 40036): 'TIME'
-2025-06-09 06:14:37,430 - [SERVER] - Mengirim waktu '06:14:37' ke ('172.16.16.102', 40036)
-2025-06-09 06:14:50,924 - [SERVER] - Menerima pesan dari ('172.16.16.102', 40036): 'TIME'
-2025-06-09 06:14:50,924 - [SERVER] - Mengirim waktu '06:14:50' ke ('172.16.16.102', 40036)
 2025-06-09 06:14:55,348 - [SERVER] - Menerima pesan dari ('172.16.16.102', 40036): 'QUIT'
 2025-06-09 06:14:55,348 - [SERVER] - Klien ('172.16.16.102', 40036) meminta keluar. Koneksi ditutup.
 2025-06-09 06:14:55,348 - [SERVER] - Thread untuk klien ('172.16.16.102', 40036) telah berhenti.
+```
+
+### 2. Pengujian Konkurensi (Dua Klien Simultan)
+
+Untuk membuktikan kemampuan *multithreading*, server diuji dengan dua klien yang terhubung secara bersamaan dari `mesin-2` dan `mesin-3`.
+
+**Sesi Interaksi Klien 1 (`mesin-2`):**
+```bash
+(base) jovyan@272794a38dc5:~/work$ telnet 172.16.16.101 45000
+Trying 172.16.16.101...
+Connected to 172.16.16.101.
+Escape character is '^]'.
+TIME
+JAM 08:55:11
+TIME
+JAM 08:55:27
+QUIT
+Connection closed by foreign host.
+```
+
+**Sesi Interaksi Klien 2 (`mesin-3`):**
+```bash
+(base) jovyan@59f6059766dd:~/work$ telnet 172.16.16.101 45000
+Trying 172.16.16.101...
+Connected to 172.16.16.101.
+Escape character is '^]'.
+TIME
+JAM 08:55:14
+TIME
+JAM 08:55:27
+QUIT
+Connection closed by foreign host.
+```
+
+**Log Aktivitas Konkuren di Server (`mesin-1`):**
+Log ini secara jelas menunjukkan bagaimana server menangani permintaan dari dua klien (`...102` dan `...103`) secara bergantian tanpa memblokir satu sama lain.
+```log
+2025-06-16 08:54:40,976 - [SERVER] - Server aktif dan mendengarkan di port 45000...
+2025-06-16 08:55:03,200 - [SERVER] - Menerima koneksi baru dari ('172.16.16.103', 34758)
+2025-06-16 08:55:03,201 - [SERVER] - Thread baru untuk klien ('172.16.16.103', 34758) dimulai.
+2025-06-16 08:55:05,192 - [SERVER] - Menerima koneksi baru dari ('172.16.16.102', 58400)
+2025-06-16 08:55:05,193 - [SERVER] - Thread baru untuk klien ('172.16.16.102', 58400) dimulai.
+2025-06-16 08:55:11,352 - [SERVER] - Menerima pesan dari ('172.16.16.102', 58400): 'TIME'
+2025-06-16 08:55:11,353 - [SERVER] - Mengirim waktu '08:55:11' ke ('172.16.16.102', 58400)
+2025-06-16 08:55:14,235 - [SERVER] - Menerima pesan dari ('172.16.16.103', 34758): 'TIME'
+2025-06-16 08:55:14,236 - [SERVER] - Mengirim waktu '08:55:14' ke ('172.16.16.103', 34758)
+2025-06-16 08:55:27,117 - [SERVER] - Menerima pesan dari ('172.16.16.103', 34758): 'TIME'
+2025-06-16 08:55:27,118 - [SERVER] - Mengirim waktu '08:55:27' ke ('172.16.16.103', 34758)
+2025-06-16 08:55:27,869 - [SERVER] - Menerima pesan dari ('172.16.16.102', 58400): 'TIME'
+2025-06-16 08:55:27,869 - [SERVER] - Mengirim waktu '08:55:27' ke ('172.16.16.102', 58400)
+2025-06-16 08:55:32,255 - [SERVER] - Menerima pesan dari ('172.16.16.102', 58400): 'QUIT'
+2025-06-16 08:55:32,256 - [SERVER] - Klien ('172.16.16.102', 58400) meminta keluar. Koneksi ditutup.
+2025-06-16 08:55:32,256 - [SERVER] - Thread untuk klien ('172.16.16.102', 58400) telah berhenti.
+2025-06-16 08:55:36,893 - [SERVER] - Menerima pesan dari ('172.16.16.103', 34758): 'QUIT'
+2025-06-16 08:55:36,893 - [SERVER] - Klien ('172.16.16.103', 34758) meminta keluar. Koneksi ditutup.
+2025-06-16 08:55:36,894 - [SERVER] - Thread untuk klien ('172.16.16.103', 34758) telah berhenti.
 ```
 
 ---
@@ -99,36 +147,26 @@ class ProcessTheClient(threading.Thread):
         logging.info(f"Thread baru untuk klien {self.address} dimulai.")
         try:
             while True:
-                # Menerima data dari klien, buffer size 1024 bytes sudah cukup.
                 data = self.connection.recv(1024)
                 if not data:
-                    # Jika data kosong, berarti klien menutup koneksi secara tiba-tiba.
                     logging.warning(f"Klien {self.address} menutup koneksi tanpa perintah QUIT.")
                     break
 
-                # Decode data dari bytes ke string (UTF-8) dan hapus spasi/baris baru (\r\n).
                 request_str = data.decode('utf-8').strip()
                 logging.info(f"Menerima pesan dari {self.address}: '{request_str}'")
 
-                # Memproses permintaan klien berdasarkan protokol yang ditentukan.
                 if request_str == "TIME":
                     now = datetime.now()
                     current_time = now.strftime("%H:%M:%S")
-                    
-                    # Membuat respons sesuai format: "JAM <jam>\r\n"
-                    # \r\n (CRLF) adalah penanda akhir pesan yang penting.
                     response = f"JAM {current_time}\r\n"
-                    
                     self.connection.sendall(response.encode('utf-8'))
                     logging.info(f"Mengirim waktu '{current_time}' ke {self.address}")
                 
                 elif request_str == "QUIT":
-                    # Jika klien mengirim QUIT, server menutup koneksi dengan rapi.
                     logging.info(f"Klien {self.address} meminta keluar. Koneksi ditutup.")
                     break
                 
                 else:
-                    # Menangani perintah yang tidak valid.
                     error_msg = "PERINTAH TIDAK DIKENALI. Gunakan TIME atau QUIT.\r\n"
                     self.connection.sendall(error_msg.encode('utf-8'))
                     logging.warning(f"Perintah tidak valid dari {self.address}.")
@@ -136,7 +174,6 @@ class ProcessTheClient(threading.Thread):
         except ConnectionResetError:
             logging.error(f"Koneksi dengan {self.address} terputus secara paksa oleh klien.")
         finally:
-            # Pastikan koneksi ditutup saat loop berakhir.
             self.connection.close()
             logging.info(f"Thread untuk klien {self.address} telah berhenti.")
 
@@ -149,29 +186,23 @@ class Server(threading.Thread):
     def __init__(self, port):
         self.port = port
         self.my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # Opsi ini memungkinkan server untuk menggunakan kembali alamat port yang sama segera setelah ditutup.
         self.my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         threading.Thread.__init__(self)
 
     def run(self):
-        # Bind socket ke semua antarmuka jaringan ('0.0.0.0') pada port 45000.
         self.my_socket.bind(('0.0.0.0', self.port))
-        self.my_socket.listen(5) # Mampu menampung hingga 5 koneksi dalam antrian.
+        self.my_socket.listen(5)
         logging.info(f"Server aktif dan mendengarkan di port {self.port}...")
 
         while True:
-            # Menerima koneksi baru. Baris ini akan 'memblokir' sampai ada klien yang masuk.
             connection, client_address = self.my_socket.accept()
             logging.info(f"Menerima koneksi baru dari {client_address}")
             
-            # Buat dan mulai thread baru untuk menangani klien ini.
             client_thread = ProcessTheClient(connection, client_address)
             client_thread.start()
 
 def main():
-    # Menentukan port sesuai tugas
     PORT = 45000
-    # Membuat dan memulai server
     server = Server(PORT)
     server.start()
 
